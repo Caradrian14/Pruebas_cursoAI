@@ -48,10 +48,108 @@ def plot_loss_functions(suptitle, functions, ylabels, xlabel):
     plt.show()
 
 x = np.linspace(-2, 2, 101)
-plot_loss_functions(
-    suptitle = 'Common loss functions for regression',
-    functions = [np.abs(x), np.power(x, 2)],
-    ylabels   = ['$\mathcal{L}_{abs}}$ (absolute loss)',
-                 '$\mathcal{L}_{sq}$ (squared loss)'],
-    xlabel    = '$y - f(x_i)$')
+#plot_loss_functions(
+#    suptitle = 'Common loss functions for regression',
+#    functions = [np.abs(x), np.power(x, 2)],
+#    ylabels   = ['$\mathcal{L}_{abs}}$ (absolute loss)',
+#                 '$\mathcal{L}_{sq}$ (squared loss)'],
+#    xlabel    = '$y - f(x_i)$')
 
+plot_loss_functions(
+    suptitle='Common loss functions for regression',
+    functions=[np.abs(x), np.power(x, 2)],
+    ylabels=[r'$\mathcal{L}_{abs}}$ (absolute loss)',
+             r'$\mathcal{L}_{sq}$ (squared loss)'],
+    xlabel=r'$y - f(x_i)$'
+)
+
+
+x = np.linspace(0,1,100)
+def zero_one(d):
+    if d < 0.5:
+        return 0
+    return 1
+zero_one_v = np.vectorize(zero_one)
+
+def logistic_loss(fx):
+    # assumes y == 1
+    return -np.log(fx)
+
+plot_loss_functions(suptitle = 'Common loss functions for classification (class=1)',
+                   functions = [zero_one_v(x), logistic_loss(x)],
+                   ylabels    = ['$\mathcal{L}_{0-1}}$ (0-1 loss)',
+                                 '$\mathcal{L}_{log}$ (logistic loss)'],
+                   xlabel     = '$p$')
+
+
+class Linear:
+    def __init__(self, nin, nout):
+        self.W = np.random.normal(0, 1.0 / np.sqrt(nin), (nout, nin))
+        self.b = np.zeros((1, nout))
+
+    def forward(self, x):
+        return np.dot(x, self.W.T) + self.b
+
+
+net = Linear(2, 2)
+net.forward(train_x[0:5])
+
+
+class Softmax:
+    def forward(self,z):
+        zmax = z.max(axis=1,keepdims=True)
+        expz = np.exp(z-zmax)
+        Z = expz.sum(axis=1,keepdims=True)
+        return expz / Z
+
+softmax = Softmax()
+softmax.forward(net.forward(train_x[0:10]))
+
+
+def plot_cross_ent():
+    p = np.linspace(0.01, 0.99, 101) # estimated probability p(y|x)
+    cross_ent_v = np.vectorize(cross_ent)
+    f3, ax = plt.subplots(1,1, figsize=(8, 3))
+    l1, = plt.plot(p, cross_ent_v(p, 1), 'r--')
+    l2, = plt.plot(p, cross_ent_v(p, 0), 'r-')
+    plt.legend([l1, l2], ['$y = 1$', '$y = 0$'], loc = 'upper center', ncol = 2)
+    plt.xlabel('$\hat{p}(y|x)$', size=18)
+    plt.ylabel('$\mathcal{L}_{CE}$', size=18)
+    plt.show()
+
+    def cross_ent(prediction, ground_truth):
+        t = 1 if ground_truth > 0.5 else 0
+        return -t * np.log(prediction) - (1 - t) * np.log(1 - prediction)
+
+    plot_cross_ent()
+
+
+
+z = net.forward(train_x[0:10])
+p = softmax.forward(z)
+loss = cross_ent_loss.forward(p,train_labels[0:10])
+print(loss)
+
+
+class Linear:
+    def __init__(self, nin, nout):
+        self.W = np.random.normal(0, 1.0 / np.sqrt(nin), (nout, nin))
+        self.b = np.zeros((1, nout))
+        self.dW = np.zeros_like(self.W)
+        self.db = np.zeros_like(self.b)
+
+    def forward(self, x):
+        self.x = x
+        return np.dot(x, self.W.T) + self.b
+
+    def backward(self, dz):
+        dx = np.dot(dz, self.W)
+        dW = np.dot(dz.T, self.x)
+        db = dz.sum(axis=0)
+        self.dW = dW
+        self.db = db
+        return dx
+
+    def update(self, lr):
+        self.W -= lr * self.dW
+        self.b -= lr * self.db
