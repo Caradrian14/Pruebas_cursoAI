@@ -75,7 +75,7 @@ def logistic_loss(fx):
     # assumes y == 1
     return -np.log(fx)
 
-plot_loss_functions(suptitle = 'Common loss functions for classification (class=1)',
+plot_loss_functions(suptitle = 'Common loss functions for classification (Clases=1)',
                    functions = [zero_one_v(x), logistic_loss(x)],
                    ylabels    = ['$\mathcal{L}_{0-1}}$ (0-1 loss)',
                                  '$\mathcal{L}_{log}$ (logistic loss)'],
