@@ -313,3 +313,7 @@ def plot_dataset(features, labels, W=None, b=None):
   plt.show()
 plot_dataset(train_x, train_labels)
 #-----------------------------
+
+# --------------Training One-Layer Perceptron---------------
+
+#-----------------------------
