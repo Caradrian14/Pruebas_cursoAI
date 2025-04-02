@@ -421,3 +421,5 @@ net = torch.nn.Linear(2,1)
 
 train(net,dataloader,val_x,val_lab,lr=0.03)
 #-----------------------------
+
+# --------------Defining a Network as a Class --------------
