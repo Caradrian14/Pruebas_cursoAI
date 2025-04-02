@@ -423,3 +423,84 @@ train(net,dataloader,val_x,val_lab,lr=0.03)
 #-----------------------------
 
 # --------------Defining a Network as a Class --------------
+class MyNet(torch.nn.Module):
+  def __init__(self, hidden_size=10, func=torch.nn.Sigmoid()):
+    super().__init__()
+    self.fc1 = torch.nn.Linear(2, hidden_size)
+    self.func = func
+    self.fc2 = torch.nn.Linear(hidden_size, 1)
+
+  def forward(self, x):
+    x = self.fc1(x)
+    x = self.func(x)
+    x = self.fc2(x)
+    return x
+
+
+net = MyNet(func=torch.nn.ReLU())
+print(net)
+def train(net, dataloader, val_x, val_lab, epochs=10, lr=0.05):
+  optim = torch.optim.Adam(net.parameters(),lr=lr)
+  for ep in range(epochs):
+    for (x,y) in dataloader:
+      z = net(x).flatten()
+      loss = torch.nn.functional.binary_cross_entropy_with_logits(z,y)
+      optim.zero_grad()
+      loss.backward()
+      optim.step()
+    acc = ((torch.sigmoid(net(val_x).flatten())>0.5).float()==val_lab).float().mean()
+    print(f"Epoch {ep}: last batch loss = {loss}, val acc = {acc}")
+
+train(net,dataloader,val_x,val_lab,lr=0.005)
+# hay dos ejecicios:
+#Task 1: Plot the graphs of loss function and accuracy on training and validation data during training
+#Task 2: Try to solve MNIST classificiation problem using this code. Hint: use crossentropy_with_logits as a loss function.
+#-----------------------------
+
+#-----------Defining a Network as PyTorch Lightning Module-----------
+# parece que mis drivers n son compatibles o algo, por que no me deja usar pytorch_lightning
+
+import pytorch_lightning as pl
+
+
+class MyNetPL(pl.LightningModule):
+  def __init__(self, hidden_size=10, func=torch.nn.Sigmoid()):
+    super().__init__()
+    self.fc1 = torch.nn.Linear(2, hidden_size)
+    self.func = func
+    self.fc2 = torch.nn.Linear(hidden_size, 1)
+
+    self.val_epoch_num = 0  # for logging
+
+  def forward(self, x):
+    x = self.fc1(x)
+    x = self.func(x)
+    x = self.fc2(x)
+    return x
+
+  def training_step(self, batch, batch_nb):
+    x, y = batch
+    y_res = self(x).view(-1)
+    loss = torch.nn.functional.binary_cross_entropy_with_logits(y_res, y)
+    return loss
+
+  def configure_optimizers(self):
+    optimizer = torch.optim.SGD(self.parameters(), lr=0.005)
+    return optimizer
+
+  def validation_step(self, batch, batch_nb):
+    x, y = batch
+    y_res = self(x).view(-1)
+    val_loss = torch.nn.functional.binary_cross_entropy_with_logits(y_res, y)
+    print("Epoch ", self.val_epoch_num, ": val loss = ", val_loss.item(), " val acc = ",
+          ((torch.sigmoid(y_res.flatten()) > 0.5).float() == y).float().mean().item(), sep="")
+    self.val_epoch_num += 1
+
+
+valid_dataset = torch.utils.data.TensorDataset(torch.tensor(valid_x), torch.tensor(valid_labels, dtype=torch.float32))
+valid_dataloader = torch.utils.data.DataLoader(valid_dataset, batch_size=16)
+
+net = MyNetPL(func=torch.nn.ReLU())
+trainer = pl.Trainer(max_epochs=30, log_every_n_steps=1, accelerator='gpu', devices=1)
+trainer.fit(model=net, train_dataloaders=dataloader, val_dataloaders=valid_dataloader)
+#-----------------------------
