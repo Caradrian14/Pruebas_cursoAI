@@ -45,7 +45,6 @@ def plot_dataset(features, labels, W=None, b=None):
 plot_dataset(train_x, train_labels)
 
 # Normalizing Data
-
 np.random.seed(0) # pick the seed for reproducibility - change it to explore the effects of random variations
 
 n = 100
@@ -95,3 +94,17 @@ def plot_dataset(features, labels, W=None, b=None):
   plt.show()
 
 plot_dataset(train_x,train_labels,model.layers[0].weights[0],model.layers[0].weights[1])
+
+# Plotting the training graphs
+model = keras.models.Sequential([
+    keras.layers.Dense(1,input_shape=(2,),activation='sigmoid')])
+model.compile(optimizer=keras.optimizers.SGD(learning_rate=0.05),loss='binary_crossentropy',metrics=['acc'])
+hist = model.fit(x=train_x_norm,y=train_labels,validation_data=(test_x_norm,test_labels),epochs=10,batch_size=1)
+
+plt.plot(hist.history['acc'])
+plt.plot(hist.history['val_acc'])
+plt.xlabel('Epoch')
+plt.ylabel('Accuracy')
+plt.title('Training and Validation Accuracy')
+plt.legend()
+plt.show()
