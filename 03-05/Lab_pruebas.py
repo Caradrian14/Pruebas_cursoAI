@@ -21,3 +21,21 @@ train_labels, test_labels = np.split(Y, split)
 
 train_x_norm = (train_x-np.min(train_x,axis=0)) / (np.max(train_x,axis=0)-np.min(train_x,axis=0))
 test_x_norm = (test_x-np.min(train_x,axis=0)) / (np.max(train_x,axis=0)-np.min(train_x,axis=0))
+
+# Multi-Class Classification
+model = keras.models.Sequential([
+    keras.layers.Dense(5,input_shape=(2,),activation='relu'),
+    keras.layers.Dense(2,activation='softmax')
+])
+model.compile(keras.optimizers.Adam(0.01),'categorical_crossentropy',['acc'])
+
+# Two ways to convert to one-hot encoding
+train_labels_onehot = keras.utils.to_categorical(train_labels)
+test_labels_onehot = np.eye(2)[test_labels]
+
+hist = model.fit(x=train_x_norm,y=train_labels_onehot,
+                 validation_data=[test_x_norm,test_labels_onehot],batch_size=1,epochs=10)
+model.compile(keras.optimizers.Adam(0.01),'sparse_categorical_crossentropy',['acc'])
+model.fit(x=train_x_norm,y=train_labels,validation_data=[test_x_norm,test_labels],batch_size=1,epochs=10)
+
+# Multi-Label Classification
