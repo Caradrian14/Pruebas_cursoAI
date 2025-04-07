@@ -6,67 +6,6 @@ from sklearn.model_selection import train_test_split
 import random
 train_x = np.linspace(0, 3, 120)
 train_labels = 2 * train_x + 0.9 + np.random.randn(*train_x.shape) * 0.5
-
-
-#--------Computational Graph and GPU Computations--------
-#Tensorflow allows us to mark our Python function using @tf.function decorator, which will make this function a part of the same computational graph.
-# This decorator can be applied to functions that use standard Tensorflow tensor operations.
-
-# loss function:
-input_dim = 1
-output_dim = 1
-learning_rate = 0.1
-
-# This is our weight matrix
-w = tf.Variable([[100.0]])
-# This is our bias vector
-b = tf.Variable(tf.zeros(shape=(output_dim,)))
-
-def f(x):
-  return tf.matmul(x,w) + b
-
-def compute_loss(labels, predictions):
-  return tf.reduce_mean(tf.square(labels - predictions))
-# We will train the model on a series of minibatches. We will use gradient descent, adjusting model parameters using the following formulae
-def train_on_batch(x, y):
-  with tf.GradientTape() as tape:
-    predictions = f(x)
-    loss = compute_loss(y, predictions)
-    # Note that `tape.gradient` works with a list as well (w, b).
-    dloss_dw, dloss_db = tape.gradient(loss, [w, b])
-  w.assign_sub(learning_rate * dloss_dw)
-  b.assign_sub(learning_rate * dloss_db)
-  return loss
-
-@tf.function
-def train_on_batch(x, y):
-  with tf.GradientTape() as tape:
-    predictions = f(x)
-    loss = compute_loss(y, predictions)
-    # Note that `tape.gradient` works with a list as well (w, b).
-    dloss_dw, dloss_db = tape.gradient(loss, [w, b])
-  w.assign_sub(learning_rate * dloss_dw)
-  b.assign_sub(learning_rate * dloss_db)
-  return loss
-# The code has not changed, but if you were running this code on GPU and on larger dataset - you would have noticed the difference in speed.
-
-# --------------Dataset API --------------
-# Tensorflow contains a convenient API to work with data. Let's try to use it. We will also train our model from scratch.
-w.assign([[10.0]])
-b.assign([0.0])
-
-# Create a tf.data.Dataset object for easy batched iteration
-dataset = tf.data.Dataset.from_tensor_slices((train_x.astype(np.float32), train_labels.astype(np.float32)))
-dataset = dataset.shuffle(buffer_size=1024).batch(256)
-
-for epoch in range(10):
-  for step, (x, y) in enumerate(dataset):
-    loss = train_on_batch(tf.reshape(x,(-1,1)), tf.reshape(y,(-1,1)))
-  print('Epoch %d: last batch loss = %.4f' % (epoch, float(loss)))
-
-# ----Example 2: Classification----
-# The core model is similar to regression, but we need to use different loss function. Let's start by generating sample data:
-
 np.random.seed(0) # pick the seed for reproducibility - change it to explore the effects of random variations
 
 n = 100
@@ -78,7 +17,6 @@ Y = Y.astype(np.int32)
 split = [ 70*n//100, (15+70)*n//100 ]
 train_x, valid_x, test_x = np.split(X, split)
 train_labels, valid_labels, test_labels = np.split(Y, split)
-
 
 def plot_dataset(features, labels, W=None, b=None):
   # prepare the plot
@@ -97,5 +35,27 @@ def plot_dataset(features, labels, W=None, b=None):
     ax.plot(cx, cy, 'g')
     ax.set_ylim(min_y, max_y)
   fig.show()
+train_x_norm = (train_x-np.min(train_x)) / (np.max(train_x)-np.min(train_x))
+valid_x_norm = (valid_x-np.min(train_x)) / (np.max(train_x)-np.min(train_x))
+test_x_norm = (test_x-np.min(train_x)) / (np.max(train_x)-np.min(train_x))
 
-plot_dataset(train_x, train_labels)
+#---------------Keras---------------
+#-----Deep Learning for Humans-----
+inputs = tf.keras.Input(shape=(2,))
+z = tf.keras.layers.Dense(1,kernel_initializer='glorot_uniform',activation='sigmoid')(inputs)
+model = tf.keras.models.Model(inputs,z)
+
+model.compile(tf.keras.optimizers.Adam(0.1),'binary_crossentropy',['accuracy'])
+model.summary()
+h = model.fit(train_x_norm,train_labels,batch_size=8,epochs=15)
+
+plt.plot(h.history['accuracy'])
+
+# -------Sequential API-------
+model = tf.keras.models.Sequential()
+model.add(tf.keras.layers.Dense(5,activation='sigmoid',input_shape=(2,)))
+model.add(tf.keras.layers.Dense(1,activation='sigmoid'))
+
+model.compile(tf.keras.optimizers.Adam(0.1),'binary_crossentropy',['accuracy'])
+model.summary()
+model.fit(train_x_norm,train_labels,validation_data=(test_x_norm,test_labels),batch_size=8,epochs=15)

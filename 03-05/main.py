@@ -181,3 +181,86 @@ def plot_dataset(features, labels, W=None, b=None):
   fig.show()
 
 plot_dataset(train_x, train_labels)
+
+#----------Normalizing Data----------
+train_x_norm = (train_x-np.min(train_x)) / (np.max(train_x)-np.min(train_x))
+valid_x_norm = (valid_x-np.min(train_x)) / (np.max(train_x)-np.min(train_x))
+test_x_norm = (test_x-np.min(train_x)) / (np.max(train_x)-np.min(train_x))
+
+#Training One-Layer Perceptron
+W = tf.Variable(tf.random.normal(shape=(2,1)),dtype=tf.float32)
+b = tf.Variable(tf.zeros(shape=(1,),dtype=tf.float32))
+
+learning_rate = 0.1
+
+@tf.function
+def train_on_batch(x, y):
+  with tf.GradientTape() as tape:
+    z = tf.matmul(x, W) + b
+    loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=y,logits=z))
+  dloss_dw, dloss_db = tape.gradient(loss, [W, b])
+  W.assign_sub(learning_rate * dloss_dw)
+  b.assign_sub(learning_rate * dloss_db)
+  return loss
+
+# Create a tf.data.Dataset object for easy batched iteration
+dataset = tf.data.Dataset.from_tensor_slices((train_x_norm.astype(np.float32), train_labels.astype(np.float32)))
+dataset = dataset.shuffle(128).batch(2)
+
+for epoch in range(10):
+  for step, (x, y) in enumerate(dataset):
+    loss = train_on_batch(x, tf.expand_dims(y,1))
+  print('Epoch %d: last batch loss = %.4f' % (epoch, float(loss)))
+
+plot_dataset(train_x,train_labels,W.numpy(),b.numpy())
+
+pred = tf.matmul(test_x,W)+b
+fig,ax = plt.subplots(1,2)
+ax[0].scatter(test_x[:,0],test_x[:,1],c=pred[:,0]>0.5)
+ax[1].scatter(test_x[:,0],test_x[:,1],c=valid_labels)
+# Esta linia es complicada y muchas cpsas a la vez
+tf.reduce_mean(tf.cast(((pred[0]>0.5)==test_labels),tf.float32))
+
+# ---------Using TensorFlow/Keras Optimizers---------
+optimizer = tf.keras.optimizers.Adam(0.01)
+
+W = tf.Variable(tf.random.normal(shape=(2,1)))
+b = tf.Variable(tf.zeros(shape=(1,),dtype=tf.float32))
+
+@tf.function
+def train_on_batch(x, y):
+  vars = [W, b]
+  with tf.GradientTape() as tape:
+    z = tf.sigmoid(tf.matmul(x, W) + b)
+    loss = tf.reduce_mean(tf.keras.losses.binary_crossentropy(z,y))
+    correct_prediction = tf.equal(tf.round(y), tf.round(z))
+    acc = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    grads = tape.gradient(loss, vars)
+    optimizer.apply_gradients(zip(grads,vars))
+  return loss,acc
+print("-----------------------")
+for epoch in range(20):
+  for step, (x, y) in enumerate(dataset):
+    loss,acc = train_on_batch(tf.reshape(x,(-1,2)), tf.reshape(y,(-1,1)))
+  print('Epoch %d: last batch loss = %.4f, acc = %.4f' % (epoch, float(loss),acc))
+
+#---------------Keras---------------
+#-----Deep Learning for Humans-----
+inputs = tf.keras.Input(shape=(2,))
+z = tf.keras.layers.Dense(1,kernel_initializer='glorot_uniform',activation='sigmoid')(inputs)
+model = tf.keras.models.Model(inputs,z)
+
+model.compile(tf.keras.optimizers.Adam(0.1),'binary_crossentropy',['accuracy'])
+model.summary()
+h = model.fit(train_x_norm,train_labels,batch_size=8,epochs=15)
+
+plt.plot(h.history['accuracy'])
+
+# -------Sequential API-------
+model = tf.keras.models.Sequential()
+model.add(tf.keras.layers.Dense(5,activation='sigmoid',input_shape=(2,)))
+model.add(tf.keras.layers.Dense(1,activation='sigmoid'))
+
+model.compile(tf.keras.optimizers.Adam(0.1),'binary_crossentropy',['accuracy'])
+model.summary()
+model.fit(train_x_norm,train_labels,validation_data=(test_x_norm,test_labels),batch_size=8,epochs=15)
