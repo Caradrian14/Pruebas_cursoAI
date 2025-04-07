@@ -26,3 +26,14 @@ You can use arithmetic operations on tensors, which are performed element-wise, 
 ### Variables
 
 Variables are useful to represent tensor values that can be modified using assign and assign_add. They are often used to represent neural network weights.
+
+
+## Computing Gradients
+
+For back propagation, you need to compute gradients. This is done using tf.GradientTape() idiom:
+
+-Add with tf.GradientTape block around our computations
+-Mark those tensors with respect to which we need to compute gradients by calling tape.watch (all variables are watched automatically)
+-Compute whatever we need (build computational graph)
+-Obtain gradients using tape.gradient
+
